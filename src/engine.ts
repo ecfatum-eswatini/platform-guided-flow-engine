@@ -19,6 +19,11 @@ export function renderStep(flow: FlowDefinition, state: FlowSessionState): strin
         if (s.field.type === 'choice' && ans !== undefined) {
           const opt = s.field.options.find((o) => o.value === ans);
           display = opt ? t(opt.label, locale) : String(ans);
+        } else if (s.field.type === 'money' && typeof ans === 'number') {
+          display = (ans / 100).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
         } else {
           display = ans !== undefined ? String(ans) : '-';
         }

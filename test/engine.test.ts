@@ -152,3 +152,51 @@ describe('runFlowTurn — version mismatch', () => {
     expect(r.replies[0]).toContain('This form was updated');
   });
 });
+
+describe('engine — additional coverage', () => {
+  it('handles "back" from the confirm step', () => {
+    const r = runFlowTurn(demoFlow, atConfirm(), 'back');
+    expect(r.status).toBe('in_progress');
+    expect(r.sessionState.step_index).toBe(1);
+    expect(r.replies[0]).toContain('Your role?');
+  });
+
+  it('accepts the siSwati back word "emuva"', () => {
+    let state = startFlow(demoFlow, 'ss').sessionState;
+    state = runFlowTurn(demoFlow, state, 'Sipho').sessionState;
+    const r = runFlowTurn(demoFlow, state, 'emuva');
+    expect(r.sessionState.step_index).toBe(0);
+  });
+
+  it('shows the siSwati notice on a version mismatch', () => {
+    const stale = { ...startFlow(demoFlow, 'ss').sessionState, flow_version: 0 };
+    const r = runFlowTurn(demoFlow, stale, 'x');
+    expect(r.replies[0]).toContain('Leli fomu livuselelisiwe');
+  });
+
+  it('renders a money answer as a formatted amount in the confirm summary', () => {
+    const moneyFlow: FlowDefinition = {
+      key: 'm',
+      version: 1,
+      title: { en: 'M', ss: 'M' },
+      steps: [
+        {
+          key: 'cost',
+          prompt: { en: 'Cost?', ss: 'Litali?' },
+          summary_label: { en: 'Cost', ss: 'Litali' },
+          field: { type: 'money' },
+        },
+        { key: 'confirm', prompt: { en: 'OK?', ss: 'Kulungile?' }, field: { type: 'confirm' } },
+      ],
+      completion: { mode: 'submit_in_chat' },
+    };
+    const rendered = renderStep(moneyFlow, {
+      flow_key: 'm',
+      flow_version: 1,
+      step_index: 1,
+      answers: { cost: 2500050 },
+      locale: 'en',
+    });
+    expect(rendered).toContain('Cost: 25,000.50');
+  });
+});

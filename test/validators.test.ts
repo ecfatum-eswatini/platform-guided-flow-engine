@@ -88,4 +88,16 @@ describe('validateField', () => {
     expect(typeof r.error.en).toBe('string');
     expect(typeof r.error.ss).toBe('string');
   });
+
+  it('text: enforces min length', () => {
+    expect(validateField({ type: 'text', min: 3 }, 'ab').ok).toBe(false);
+  });
+
+  it('text: enforces max length', () => {
+    expect(validateField({ type: 'text', max: 3 }, 'abcd').ok).toBe(false);
+  });
+
+  it('number: enforces max', () => {
+    expect(validateField({ type: 'number', max: 10 }, '11').ok).toBe(false);
+  });
 });
