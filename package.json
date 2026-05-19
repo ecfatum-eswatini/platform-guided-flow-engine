@@ -1,7 +1,7 @@
 {
-  "name": "@govsz/whatsapp-flow-engine",
+  "name": "@govsz/guided-flow-engine",
   "version": "0.1.0",
-  "description": "Pure step-runner for gov.sz WhatsApp guided application flows",
+  "description": "Pure step-runner for gov.sz guided multi-step application flows",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
