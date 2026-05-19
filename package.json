@@ -2,6 +2,7 @@
   "name": "@govsz/guided-flow-engine",
   "version": "0.1.0",
   "description": "Pure step-runner for gov.sz guided multi-step application flows",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
