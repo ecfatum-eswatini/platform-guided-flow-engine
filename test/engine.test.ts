@@ -98,3 +98,57 @@ describe('runFlowTurn — progression', () => {
     expect(r.replies[0]).toContain('Role: Owner');
   });
 });
+
+function atConfirm(locale: 'en' | 'ss' = 'en') {
+  let state = startFlow(demoFlow, locale).sessionState;
+  state = runFlowTurn(demoFlow, state, 'Sipho').sessionState;
+  state = runFlowTurn(demoFlow, state, '1').sessionState;
+  return state; // step_index === 2, the confirm step
+}
+
+describe('runFlowTurn — confirm and completion', () => {
+  it('completes the flow on a "yes" at the confirm step', () => {
+    const r = runFlowTurn(demoFlow, atConfirm(), 'yes');
+    expect(r.status).toBe('complete');
+    expect(r.answers).toEqual({ name: 'Sipho', role: 'owner' });
+  });
+
+  it('cancels the flow on a "no" at the confirm step', () => {
+    const r = runFlowTurn(demoFlow, atConfirm(), 'no');
+    expect(r.status).toBe('cancelled');
+  });
+
+  it('re-prompts on an unrecognised confirm answer', () => {
+    const r = runFlowTurn(demoFlow, atConfirm(), 'maybe');
+    expect(r.status).toBe('in_progress');
+    expect(r.replies[0]).toContain("Please reply 'yes' or 'no'.");
+  });
+});
+
+describe('runFlowTurn — back', () => {
+  it('steps back one step and re-prompts', () => {
+    let state = startFlow(demoFlow, 'en').sessionState;
+    state = runFlowTurn(demoFlow, state, 'Sipho').sessionState; // now at step 1
+    const r = runFlowTurn(demoFlow, state, 'back');
+    expect(r.sessionState.step_index).toBe(0);
+    expect(r.replies[0]).toContain('What is your name?');
+  });
+
+  it('ignores "back" at step 0 and treats it as input', () => {
+    const state = startFlow(demoFlow, 'en').sessionState;
+    const r = runFlowTurn(demoFlow, state, 'back');
+    expect(r.sessionState.step_index).toBe(1);
+    expect(r.sessionState.answers).toEqual({ name: 'back' });
+  });
+});
+
+describe('runFlowTurn — version mismatch', () => {
+  it('resets to step 0 with a notice when flow_version differs', () => {
+    const stale = { ...startFlow(demoFlow, 'en').sessionState, flow_version: 0, step_index: 1 };
+    const r = runFlowTurn(demoFlow, stale, 'anything');
+    expect(r.status).toBe('in_progress');
+    expect(r.sessionState.step_index).toBe(0);
+    expect(r.sessionState.flow_version).toBe(1);
+    expect(r.replies[0]).toContain('This form was updated');
+  });
+});

@@ -56,8 +56,42 @@ export function runFlowTurn(
 ): FlowTurnResult {
   const locale = state.locale;
   const trimmed = input.trim();
+
+  // Stale resumed session — reset to a fresh flow.
+  if (state.flow_version !== flow.version) {
+    const fresh = startFlow(flow, locale);
+    const notice =
+      locale === 'ss'
+        ? 'Leli fomu livuselelisiwe. Asicaleni kabusha.'
+        : 'This form was updated. Let us start over.';
+    return { ...fresh, replies: [notice, ...fresh.replies] };
+  }
+
   const step = flow.steps[state.step_index];
 
+  // "back" — step back one (ignored at step 0, where it falls through as input).
+  if (BACK_WORDS.includes(trimmed.toLowerCase()) && state.step_index > 0) {
+    const prev: FlowSessionState = { ...state, step_index: state.step_index - 1 };
+    return { sessionState: prev, replies: [renderStep(flow, prev)], status: 'in_progress' };
+  }
+
+  // Confirm step — "yes" completes, "no" cancels.
+  if (step.field.type === 'confirm') {
+    const confirmResult = validateField(step.field, trimmed);
+    if (!confirmResult.ok) {
+      return {
+        sessionState: state,
+        replies: [confirmResult.error[locale], renderStep(flow, state)],
+        status: 'in_progress',
+      };
+    }
+    if (confirmResult.value === 'yes') {
+      return { sessionState: state, replies: [], status: 'complete', answers: { ...state.answers } };
+    }
+    return { sessionState: state, replies: [], status: 'cancelled' };
+  }
+
+  // Data step — validate, store, advance.
   const result = validateField(step.field, trimmed);
   if (!result.ok) {
     return {
@@ -66,7 +100,6 @@ export function runFlowTurn(
       status: 'in_progress',
     };
   }
-
   const nextState: FlowSessionState = {
     ...state,
     step_index: state.step_index + 1,
