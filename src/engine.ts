@@ -1,4 +1,5 @@
 import type { FlowDefinition, FlowSessionState, FlowTurnResult, Locale, LocalizedText } from './types.js';
+import { validateField } from './validators.js';
 
 function t(text: LocalizedText, locale: Locale): string {
   return text[locale];
@@ -44,4 +45,32 @@ export function startFlow(flow: FlowDefinition, locale: Locale): FlowTurnResult 
     locale,
   };
   return { sessionState: state, replies: [renderStep(flow, state)], status: 'in_progress' };
+}
+
+const BACK_WORDS = ['back', 'emuva'];
+
+export function runFlowTurn(
+  flow: FlowDefinition,
+  state: FlowSessionState,
+  input: string,
+): FlowTurnResult {
+  const locale = state.locale;
+  const trimmed = input.trim();
+  const step = flow.steps[state.step_index];
+
+  const result = validateField(step.field, trimmed);
+  if (!result.ok) {
+    return {
+      sessionState: state,
+      replies: [result.error[locale], renderStep(flow, state)],
+      status: 'in_progress',
+    };
+  }
+
+  const nextState: FlowSessionState = {
+    ...state,
+    step_index: state.step_index + 1,
+    answers: { ...state.answers, [step.key]: result.value },
+  };
+  return { sessionState: nextState, replies: [renderStep(flow, nextState)], status: 'in_progress' };
 }

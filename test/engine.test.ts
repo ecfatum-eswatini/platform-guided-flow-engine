@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { startFlow, renderStep } from '../src/engine.js';
+import { startFlow, renderStep, runFlowTurn } from '../src/engine.js';
 import type { FlowDefinition } from '../src/types.js';
 
 export const demoFlow: FlowDefinition = {
@@ -67,5 +67,34 @@ describe('renderStep', () => {
     });
     expect(rendered).toContain('Name: Sipho');
     expect(rendered).toContain('Role: Owner');
+  });
+});
+
+describe('runFlowTurn — progression', () => {
+  it('stores a valid answer and advances to the next step', () => {
+    const state = startFlow(demoFlow, 'en').sessionState;
+    const r = runFlowTurn(demoFlow, state, 'Sipho Dlamini');
+    expect(r.status).toBe('in_progress');
+    expect(r.sessionState.step_index).toBe(1);
+    expect(r.sessionState.answers).toEqual({ name: 'Sipho Dlamini' });
+    expect(r.replies[0]).toContain('Your role?');
+  });
+
+  it('re-prompts with a bilingual error on invalid input, state unchanged', () => {
+    const state = startFlow(demoFlow, 'en').sessionState;
+    const r = runFlowTurn(demoFlow, state, '   ');
+    expect(r.status).toBe('in_progress');
+    expect(r.sessionState.step_index).toBe(0);
+    expect(r.replies[0]).toContain('Please enter a value.');
+    expect(r.replies[1]).toContain('What is your name?');
+  });
+
+  it('renders the confirm summary after the last data step', () => {
+    let state = startFlow(demoFlow, 'en').sessionState;
+    state = runFlowTurn(demoFlow, state, 'Sipho').sessionState;
+    const r = runFlowTurn(demoFlow, state, '1');
+    expect(r.sessionState.step_index).toBe(2);
+    expect(r.replies[0]).toContain('Name: Sipho');
+    expect(r.replies[0]).toContain('Role: Owner');
   });
 });
