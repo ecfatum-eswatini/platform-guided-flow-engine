@@ -66,6 +66,6 @@ describe('renderStep', () => {
       locale: 'en',
     });
     expect(rendered).toContain('Name: Sipho');
-    expect(rendered).toContain('Role: owner');
+    expect(rendered).toContain('Role: Owner');
   });
 });

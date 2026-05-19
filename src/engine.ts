@@ -14,7 +14,14 @@ export function renderStep(flow: FlowDefinition, state: FlowSessionState): strin
       .map((s) => {
         const label = s.summary_label ? t(s.summary_label, locale) : s.key;
         const ans = state.answers[s.key];
-        return `• ${label}: ${ans ?? '-'}`;
+        let display: string;
+        if (s.field.type === 'choice' && ans !== undefined) {
+          const opt = s.field.options.find((o) => o.value === ans);
+          display = opt ? t(opt.label, locale) : String(ans);
+        } else {
+          display = ans !== undefined ? String(ans) : '-';
+        }
+        return `• ${label}: ${display}`;
       });
     return [t(step.prompt, locale), '', ...lines].join('\n');
   }
