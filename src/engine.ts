@@ -5,6 +5,18 @@ function t(text: LocalizedText, locale: Locale): string {
   return text[locale];
 }
 
+const SKIP_WORDS = ['skip', '-', 'none', 'yeka'];
+
+function skipHint(locale: Locale): string {
+  return locale === 'ss'
+    ? '(Loba "yeka" kute uyekele.)' // TODO: siSwati review
+    : '(Reply "skip" to leave this blank.)';
+}
+
+function isSkip(input: string): boolean {
+  return SKIP_WORDS.includes(input.trim().toLowerCase());
+}
+
 export function renderStep(flow: FlowDefinition, state: FlowSessionState): string {
   const step = flow.steps[state.step_index];
   const locale = state.locale;
@@ -38,6 +50,7 @@ export function renderStep(flow: FlowDefinition, state: FlowSessionState): strin
     const opts = step.field.options.map((o, i) => `${i + 1}. ${t(o.label, locale)}`);
     body += `\n${opts.join('\n')}`;
   }
+  if (step.optional) body += `\n${skipHint(locale)}`;
   return body;
 }
 
@@ -94,6 +107,12 @@ export function runFlowTurn(
       return { sessionState: state, replies: [], status: 'complete', answers: { ...state.answers } };
     }
     return { sessionState: state, replies: [], status: 'cancelled' };
+  }
+
+  // Optional step — a skip token advances without storing an answer.
+  if (step.optional && isSkip(trimmed)) {
+    const nextState: FlowSessionState = { ...state, step_index: state.step_index + 1 };
+    return { sessionState: nextState, replies: [renderStep(flow, nextState)], status: 'in_progress' };
   }
 
   // Data step — validate, store, advance.

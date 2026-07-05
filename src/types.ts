@@ -30,6 +30,7 @@ export const FlowStepSchema = z.object({
   prompt: LocalizedTextSchema,
   help: LocalizedTextSchema.optional(),
   summary_label: LocalizedTextSchema.optional(),
+  optional: z.boolean().optional(),
   field: FieldSpecSchema,
 });
 export type FlowStep = z.infer<typeof FlowStepSchema>;
