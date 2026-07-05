@@ -1,4 +1,4 @@
-import type { FieldSpec, LocalizedText, AnswerValue } from './types.js';
+import type { FieldSpec, LocalizedText, AnswerValue, ChoiceOption } from './types.js';
 
 export type ValidationResult =
   | { ok: true; value: AnswerValue }
@@ -8,7 +8,19 @@ function err(en: string, ss: string): ValidationResult {
   return { ok: false, error: { en, ss } };
 }
 
-export function validateField(spec: FieldSpec, raw: string): ValidationResult {
+function matchChoice(options: ChoiceOption[], input: string): ValidationResult {
+  const idx = Number(input);
+  if (Number.isInteger(idx) && idx >= 1 && idx <= options.length)
+    return { ok: true, value: options[idx - 1].value };
+  const byValue = options.find((o) => o.value.toLowerCase() === input.toLowerCase());
+  if (byValue) return { ok: true, value: byValue.value };
+  return err(
+    `Please reply with a number from 1 to ${options.length}.`,
+    `Sicela uphendvule ngenombolo kusukela ku-1 kuya ku-${options.length}.`,
+  );
+}
+
+export function validateField(spec: FieldSpec, raw: string, ctxOptions?: ChoiceOption[]): ValidationResult {
   const input = raw.trim();
   switch (spec.type) {
     case 'text': {
@@ -43,16 +55,15 @@ export function validateField(spec: FieldSpec, raw: string): ValidationResult {
         return err('Please enter an amount, e.g. 25000.', 'Sicela ufake inani, sib. 25000.');
       return { ok: true, value: Math.round(parseFloat(cleaned) * 100) };
     }
-    case 'choice': {
-      const idx = Number(input);
-      if (Number.isInteger(idx) && idx >= 1 && idx <= spec.options.length)
-        return { ok: true, value: spec.options[idx - 1].value };
-      const byValue = spec.options.find((o) => o.value.toLowerCase() === input.toLowerCase());
-      if (byValue) return { ok: true, value: byValue.value };
-      return err(
-        `Please reply with a number from 1 to ${spec.options.length}.`,
-        `Sicela uphendvule ngenombolo kusukela ku-1 kuya ku-${spec.options.length}.`,
-      );
+    case 'choice':
+      return matchChoice(spec.options, input);
+    case 'dynamic_choice': {
+      if (!ctxOptions || ctxOptions.length === 0)
+        return err(
+          'No options are available right now. Please try again shortly.',
+          'Akukho lokungakhetfwa kwanyalo. Sicela uzame futsi ngemuva kwesikhashana.', // TODO: siSwati review
+        );
+      return matchChoice(ctxOptions, input);
     }
     case 'msisdn': {
       const digits = input.replace(/\D/g, '');

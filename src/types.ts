@@ -19,6 +19,7 @@ export const FieldSpecSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('money') }),
   z.object({ type: z.literal('choice'), options: z.array(ChoiceOptionSchema).min(2) }),
+  z.object({ type: z.literal('dynamic_choice'), source: z.string().min(1) }),
   z.object({ type: z.literal('msisdn') }),
   z.object({ type: z.literal('email') }),
   z.object({ type: z.literal('confirm') }),
@@ -61,6 +62,7 @@ export const FlowSessionStateSchema = z.object({
   flow_version: z.number().int(),
   step_index: z.number().int().nonnegative(),
   answers: z.record(z.string(), z.union([z.string(), z.number()])),
+  answer_labels: z.record(z.string(), z.string()).optional(),
   locale: LocaleSchema,
 });
 export type FlowSessionState = z.infer<typeof FlowSessionStateSchema>;
@@ -72,4 +74,9 @@ export interface FlowTurnResult {
   replies: string[];
   status: FlowStatus;
   answers?: Record<string, AnswerValue>;
+}
+
+export interface FlowContext {
+  /** Resolved options for dynamic_choice steps, keyed by step.key. */
+  options?: Record<string, ChoiceOption[]>;
 }

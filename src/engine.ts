@@ -1,4 +1,13 @@
-import type { FlowDefinition, FlowSessionState, FlowTurnResult, Locale, LocalizedText } from './types.js';
+import type {
+  ChoiceOption,
+  FlowContext,
+  FlowDefinition,
+  FlowSessionState,
+  FlowStep,
+  FlowTurnResult,
+  Locale,
+  LocalizedText,
+} from './types.js';
 import { validateField } from './validators.js';
 
 function t(text: LocalizedText, locale: Locale): string {
@@ -6,6 +15,7 @@ function t(text: LocalizedText, locale: Locale): string {
 }
 
 const SKIP_WORDS = ['skip', '-', 'none', 'yeka'];
+const BACK_WORDS = ['back', 'emuva'];
 
 function skipHint(locale: Locale): string {
   return locale === 'ss'
@@ -17,7 +27,15 @@ function isSkip(input: string): boolean {
   return SKIP_WORDS.includes(input.trim().toLowerCase());
 }
 
-export function renderStep(flow: FlowDefinition, state: FlowSessionState): string {
+function optionsFor(step: FlowStep, ctx: FlowContext): ChoiceOption[] {
+  return ctx.options?.[step.key] ?? [];
+}
+
+export function renderStep(
+  flow: FlowDefinition,
+  state: FlowSessionState,
+  ctx: FlowContext = {},
+): string {
   const step = flow.steps[state.step_index];
   const locale = state.locale;
 
@@ -31,6 +49,8 @@ export function renderStep(flow: FlowDefinition, state: FlowSessionState): strin
         if (s.field.type === 'choice' && ans !== undefined) {
           const opt = s.field.options.find((o) => o.value === ans);
           display = opt ? t(opt.label, locale) : String(ans);
+        } else if (s.field.type === 'dynamic_choice' && ans !== undefined) {
+          display = state.answer_labels?.[s.key] ?? String(ans);
         } else if (s.field.type === 'money' && typeof ans === 'number') {
           display = (ans / 100).toLocaleString('en-US', {
             minimumFractionDigits: 2,
@@ -49,35 +69,42 @@ export function renderStep(flow: FlowDefinition, state: FlowSessionState): strin
   if (step.field.type === 'choice') {
     const opts = step.field.options.map((o, i) => `${i + 1}. ${t(o.label, locale)}`);
     body += `\n${opts.join('\n')}`;
+  } else if (step.field.type === 'dynamic_choice') {
+    const opts = optionsFor(step, ctx).map((o, i) => `${i + 1}. ${t(o.label, locale)}`);
+    if (opts.length > 0) body += `\n${opts.join('\n')}`;
   }
   if (step.optional) body += `\n${skipHint(locale)}`;
   return body;
 }
 
-export function startFlow(flow: FlowDefinition, locale: Locale): FlowTurnResult {
+export function startFlow(
+  flow: FlowDefinition,
+  locale: Locale,
+  ctx: FlowContext = {},
+): FlowTurnResult {
   const state: FlowSessionState = {
     flow_key: flow.key,
     flow_version: flow.version,
     step_index: 0,
     answers: {},
+    answer_labels: {},
     locale,
   };
-  return { sessionState: state, replies: [renderStep(flow, state)], status: 'in_progress' };
+  return { sessionState: state, replies: [renderStep(flow, state, ctx)], status: 'in_progress' };
 }
-
-const BACK_WORDS = ['back', 'emuva'];
 
 export function runFlowTurn(
   flow: FlowDefinition,
   state: FlowSessionState,
   input: string,
+  ctx: FlowContext = {},
 ): FlowTurnResult {
   const locale = state.locale;
   const trimmed = input.trim();
 
   // Stale resumed session — reset to a fresh flow.
   if (state.flow_version !== flow.version) {
-    const fresh = startFlow(flow, locale);
+    const fresh = startFlow(flow, locale, ctx);
     const notice =
       locale === 'ss'
         ? 'Leli fomu livuselelisiwe. Asicaleni kabusha.'
@@ -90,7 +117,7 @@ export function runFlowTurn(
   // "back" — step back one (ignored at step 0, where it falls through as input).
   if (BACK_WORDS.includes(trimmed.toLowerCase()) && state.step_index > 0) {
     const prev: FlowSessionState = { ...state, step_index: state.step_index - 1 };
-    return { sessionState: prev, replies: [renderStep(flow, prev)], status: 'in_progress' };
+    return { sessionState: prev, replies: [renderStep(flow, prev, ctx)], status: 'in_progress' };
   }
 
   // Confirm step — "yes" completes, "no" cancels.
@@ -99,7 +126,7 @@ export function runFlowTurn(
     if (!confirmResult.ok) {
       return {
         sessionState: state,
-        replies: [confirmResult.error[locale], renderStep(flow, state)],
+        replies: [confirmResult.error[locale], renderStep(flow, state, ctx)],
         status: 'in_progress',
       };
     }
@@ -112,7 +139,31 @@ export function runFlowTurn(
   // Optional step — a skip token advances without storing an answer.
   if (step.optional && isSkip(trimmed)) {
     const nextState: FlowSessionState = { ...state, step_index: state.step_index + 1 };
-    return { sessionState: nextState, replies: [renderStep(flow, nextState)], status: 'in_progress' };
+    return { sessionState: nextState, replies: [renderStep(flow, nextState, ctx)], status: 'in_progress' };
+  }
+
+  // Dynamic choice — validate against injected options and record the label.
+  if (step.field.type === 'dynamic_choice') {
+    const opts = optionsFor(step, ctx);
+    const result = validateField(step.field, trimmed, opts);
+    if (!result.ok) {
+      return {
+        sessionState: state,
+        replies: [result.error[locale], renderStep(flow, state, ctx)],
+        status: 'in_progress',
+      };
+    }
+    const chosen = opts.find((o) => o.value === result.value);
+    const nextState: FlowSessionState = {
+      ...state,
+      step_index: state.step_index + 1,
+      answers: { ...state.answers, [step.key]: result.value },
+      answer_labels: {
+        ...(state.answer_labels ?? {}),
+        [step.key]: chosen ? chosen.label[locale] : String(result.value),
+      },
+    };
+    return { sessionState: nextState, replies: [renderStep(flow, nextState, ctx)], status: 'in_progress' };
   }
 
   // Data step — validate, store, advance.
@@ -120,7 +171,7 @@ export function runFlowTurn(
   if (!result.ok) {
     return {
       sessionState: state,
-      replies: [result.error[locale], renderStep(flow, state)],
+      replies: [result.error[locale], renderStep(flow, state, ctx)],
       status: 'in_progress',
     };
   }
@@ -129,5 +180,5 @@ export function runFlowTurn(
     step_index: state.step_index + 1,
     answers: { ...state.answers, [step.key]: result.value },
   };
-  return { sessionState: nextState, replies: [renderStep(flow, nextState)], status: 'in_progress' };
+  return { sessionState: nextState, replies: [renderStep(flow, nextState, ctx)], status: 'in_progress' };
 }
