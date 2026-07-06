@@ -159,6 +159,20 @@ export declare const SkipCondSchema: z.ZodObject<{
     in?: (string | number)[] | undefined;
 }>;
 export type SkipCond = z.infer<typeof SkipCondSchema>;
+export declare const StepBranchSchema: z.ZodObject<{
+    action: z.ZodEnum<["advance", "complete", "goto"]>;
+    goto: z.ZodOptional<z.ZodString>;
+    clear_from: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    action: "advance" | "complete" | "goto";
+    goto?: string | undefined;
+    clear_from?: string | undefined;
+}, {
+    action: "advance" | "complete" | "goto";
+    goto?: string | undefined;
+    clear_from?: string | undefined;
+}>;
+export type StepBranch = z.infer<typeof StepBranchSchema>;
 export declare const FlowStepSchema: z.ZodObject<{
     key: z.ZodString;
     prompt: z.ZodObject<{
@@ -206,6 +220,19 @@ export declare const FlowStepSchema: z.ZodObject<{
         in?: (string | number)[] | undefined;
     }>, "many">>;
     prefill: z.ZodOptional<z.ZodString>;
+    branches: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        action: z.ZodEnum<["advance", "complete", "goto"]>;
+        goto: z.ZodOptional<z.ZodString>;
+        clear_from: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        action: "advance" | "complete" | "goto";
+        goto?: string | undefined;
+        clear_from?: string | undefined;
+    }, {
+        action: "advance" | "complete" | "goto";
+        goto?: string | undefined;
+        clear_from?: string | undefined;
+    }>>>;
     field: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         type: z.ZodLiteral<"text">;
         min: z.ZodOptional<z.ZodNumber>;
@@ -363,6 +390,11 @@ export declare const FlowStepSchema: z.ZodObject<{
         in?: (string | number)[] | undefined;
     }[] | undefined;
     prefill?: string | undefined;
+    branches?: Record<string, {
+        action: "advance" | "complete" | "goto";
+        goto?: string | undefined;
+        clear_from?: string | undefined;
+    }> | undefined;
 }, {
     key: string;
     prompt: {
@@ -414,6 +446,11 @@ export declare const FlowStepSchema: z.ZodObject<{
         in?: (string | number)[] | undefined;
     }[] | undefined;
     prefill?: string | undefined;
+    branches?: Record<string, {
+        action: "advance" | "complete" | "goto";
+        goto?: string | undefined;
+        clear_from?: string | undefined;
+    }> | undefined;
 }>;
 export type FlowStep = z.infer<typeof FlowStepSchema>;
 export declare const FlowCompletionSchema: z.ZodObject<{
@@ -487,6 +524,19 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             in?: (string | number)[] | undefined;
         }>, "many">>;
         prefill: z.ZodOptional<z.ZodString>;
+        branches: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+            action: z.ZodEnum<["advance", "complete", "goto"]>;
+            goto: z.ZodOptional<z.ZodString>;
+            clear_from: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            action: "advance" | "complete" | "goto";
+            goto?: string | undefined;
+            clear_from?: string | undefined;
+        }, {
+            action: "advance" | "complete" | "goto";
+            goto?: string | undefined;
+            clear_from?: string | undefined;
+        }>>>;
         field: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
             type: z.ZodLiteral<"text">;
             min: z.ZodOptional<z.ZodNumber>;
@@ -644,6 +694,11 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             in?: (string | number)[] | undefined;
         }[] | undefined;
         prefill?: string | undefined;
+        branches?: Record<string, {
+            action: "advance" | "complete" | "goto";
+            goto?: string | undefined;
+            clear_from?: string | undefined;
+        }> | undefined;
     }, {
         key: string;
         prompt: {
@@ -695,6 +750,11 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             in?: (string | number)[] | undefined;
         }[] | undefined;
         prefill?: string | undefined;
+        branches?: Record<string, {
+            action: "advance" | "complete" | "goto";
+            goto?: string | undefined;
+            clear_from?: string | undefined;
+        }> | undefined;
     }>, "many">;
     completion: z.ZodObject<{
         mode: z.ZodEnum<["submit_in_chat", "draft_then_portal"]>;
@@ -764,6 +824,11 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             in?: (string | number)[] | undefined;
         }[] | undefined;
         prefill?: string | undefined;
+        branches?: Record<string, {
+            action: "advance" | "complete" | "goto";
+            goto?: string | undefined;
+            clear_from?: string | undefined;
+        }> | undefined;
     }[];
     completion: {
         mode: "submit_in_chat" | "draft_then_portal";
@@ -827,6 +892,11 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             in?: (string | number)[] | undefined;
         }[] | undefined;
         prefill?: string | undefined;
+        branches?: Record<string, {
+            action: "advance" | "complete" | "goto";
+            goto?: string | undefined;
+            clear_from?: string | undefined;
+        }> | undefined;
     }[];
     completion: {
         mode: "submit_in_chat" | "draft_then_portal";
@@ -890,6 +960,11 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             in?: (string | number)[] | undefined;
         }[] | undefined;
         prefill?: string | undefined;
+        branches?: Record<string, {
+            action: "advance" | "complete" | "goto";
+            goto?: string | undefined;
+            clear_from?: string | undefined;
+        }> | undefined;
     }[];
     completion: {
         mode: "submit_in_chat" | "draft_then_portal";
@@ -953,6 +1028,11 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             in?: (string | number)[] | undefined;
         }[] | undefined;
         prefill?: string | undefined;
+        branches?: Record<string, {
+            action: "advance" | "complete" | "goto";
+            goto?: string | undefined;
+            clear_from?: string | undefined;
+        }> | undefined;
     }[];
     completion: {
         mode: "submit_in_chat" | "draft_then_portal";
@@ -996,4 +1076,6 @@ export interface FlowContext {
     options?: Record<string, ChoiceOption[]>;
     /** Facts the portal injects this turn (e.g. a plate lookup result) to drive skip_when. */
     prefill?: Record<string, string | number>;
+    /** Values available for {token} interpolation in rendered prompts. Answers win over vars. */
+    vars?: Record<string, string | number>;
 }

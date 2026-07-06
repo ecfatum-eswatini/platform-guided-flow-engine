@@ -44,6 +44,60 @@ function prevVisibleFrom(flow, index, answers) {
     }
     return Math.max(i, 0);
 }
+function interpolate(body, ctx, answers) {
+    if (!body.includes('{'))
+        return body;
+    const lookup = { ...ctx.vars, ...answers };
+    return body.replace(/\{([^{}]+)\}/g, (_match, token) => {
+        const value = lookup[token];
+        return value === undefined ? '' : String(value);
+    });
+}
+function stepIndexByKey(flow, key) {
+    const idx = flow.steps.findIndex((s) => s.key === key);
+    return idx;
+}
+function clearAnswersFrom(flow, answers, clearFromKey) {
+    const clearIndex = stepIndexByKey(flow, clearFromKey);
+    if (clearIndex < 0)
+        return answers;
+    const result = { ...answers };
+    flow.steps.forEach((s, i) => {
+        if (i >= clearIndex)
+            delete result[s.key];
+    });
+    return result;
+}
+/**
+ * Resolve the branch action (if any) declared for the chosen value on a
+ * choice/dynamic_choice/confirm step, and build the resulting turn.
+ * Returns null when there is no branch entry for this value — callers should
+ * fall through to their existing store-and-advance behavior in that case.
+ */
+function applyBranch(flow, state, step, value, answersBeforeThisStep, ctx) {
+    const branch = step.branches?.[String(value)];
+    if (!branch)
+        return null;
+    if (branch.action === 'complete') {
+        const answers = { ...answersBeforeThisStep, [step.key]: value };
+        return { sessionState: state, replies: [], status: 'complete', answers };
+    }
+    if (branch.action === 'goto') {
+        const clearedAnswers = branch.clear_from
+            ? clearAnswersFrom(flow, answersBeforeThisStep, branch.clear_from)
+            : answersBeforeThisStep;
+        const targetIndex = branch.goto ? stepIndexByKey(flow, branch.goto) : state.step_index;
+        const resolvedIndex = targetIndex >= 0 ? targetIndex : state.step_index;
+        const nextState = {
+            ...state,
+            step_index: firstVisibleFrom(flow, resolvedIndex, clearedAnswers),
+            answers: clearedAnswers,
+        };
+        return { sessionState: nextState, replies: [renderStep(flow, nextState, ctx)], status: 'in_progress' };
+    }
+    // action === 'advance' -> no special handling, fall through to normal behavior.
+    return null;
+}
 export function renderStep(flow, state, ctx = {}) {
     const step = flow.steps[state.step_index];
     const locale = state.locale;
@@ -72,7 +126,8 @@ export function renderStep(flow, state, ctx = {}) {
             }
             return `• ${label}: ${display}`;
         });
-        return [t(step.prompt, locale), '', ...lines].join('\n');
+        const summaryBody = [t(step.prompt, locale), '', ...lines].join('\n');
+        return interpolate(summaryBody, ctx, state.answers);
     }
     let body = t(step.prompt, locale);
     if (step.help)
@@ -88,7 +143,7 @@ export function renderStep(flow, state, ctx = {}) {
     }
     if (step.optional)
         body += `\n${skipHint(locale)}`;
-    return body;
+    return interpolate(body, ctx, state.answers);
 }
 export function startFlow(flow, locale, ctx = {}) {
     const state = {
@@ -120,7 +175,7 @@ export function runFlowTurn(flow, state, input, ctx = {}) {
         const prev = { ...state, step_index: prevIndex };
         return { sessionState: prev, replies: [renderStep(flow, prev, ctx)], status: 'in_progress' };
     }
-    // Confirm step — "yes" completes, "no" cancels.
+    // Confirm step — a declared branch takes over; otherwise "yes" completes, "no" cancels.
     if (step.field.type === 'confirm') {
         const confirmResult = validateField(step.field, trimmed);
         if (!confirmResult.ok) {
@@ -129,6 +184,11 @@ export function runFlowTurn(flow, state, input, ctx = {}) {
                 replies: [confirmResult.error[locale], renderStep(flow, state, ctx)],
                 status: 'in_progress',
             };
+        }
+        if (step.branches) {
+            const branched = applyBranch(flow, state, step, confirmResult.value, state.answers, ctx);
+            if (branched)
+                return branched;
         }
         if (confirmResult.value === 'yes') {
             return { sessionState: state, replies: [], status: 'complete', answers: { ...state.answers } };
@@ -156,6 +216,11 @@ export function runFlowTurn(flow, state, input, ctx = {}) {
                 status: 'in_progress',
             };
         }
+        if (step.branches) {
+            const branched = applyBranch(flow, state, step, result.value, state.answers, ctx);
+            if (branched)
+                return branched;
+        }
         const chosen = opts.find((o) => o.value === result.value);
         const nextAnswers = { ...state.answers, [step.key]: result.value };
         const merged = step.prefill && ctx.prefill ? { ...nextAnswers, ...ctx.prefill } : nextAnswers;
@@ -178,6 +243,11 @@ export function runFlowTurn(flow, state, input, ctx = {}) {
             replies: [result.error[locale], renderStep(flow, state, ctx)],
             status: 'in_progress',
         };
+    }
+    if (step.field.type === 'choice' && step.branches) {
+        const branched = applyBranch(flow, state, step, result.value, state.answers, ctx);
+        if (branched)
+            return branched;
     }
     const nextAnswers = { ...state.answers, [step.key]: result.value };
     const merged = step.prefill && ctx.prefill ? { ...nextAnswers, ...ctx.prefill } : nextAnswers;

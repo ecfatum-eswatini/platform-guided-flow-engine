@@ -22,6 +22,11 @@ export const SkipCondSchema = z.object({
     equals: z.union([z.string(), z.number()]).optional(),
     in: z.array(z.union([z.string(), z.number()])).optional(),
 });
+export const StepBranchSchema = z.object({
+    action: z.enum(['advance', 'complete', 'goto']),
+    goto: z.string().optional(), // step key to jump to (required when action==='goto')
+    clear_from: z.string().optional(), // step key; clear answers for all steps at index >= this step's index
+});
 export const FlowStepSchema = z.object({
     key: z.string().min(1),
     prompt: LocalizedTextSchema,
@@ -30,12 +35,22 @@ export const FlowStepSchema = z.object({
     optional: z.boolean().optional(),
     skip_when: z.array(SkipCondSchema).optional(),
     prefill: z.string().min(1).optional(),
+    branches: z.record(z.string(), StepBranchSchema).optional(),
     field: FieldSpecSchema,
 });
 export const FlowCompletionSchema = z.object({
     mode: z.enum(['submit_in_chat', 'draft_then_portal']),
     portal_deeplink_path: z.string().optional(),
 });
+function lastStepIsValidTerminal(f) {
+    const last = f.steps[f.steps.length - 1];
+    if (last.field.type === 'confirm')
+        return true;
+    if (last.field.type === 'choice' || last.field.type === 'dynamic_choice') {
+        return Object.values(last.branches ?? {}).some((b) => b.action === 'complete');
+    }
+    return false;
+}
 export const FlowDefinitionSchema = z
     .object({
     key: z.string().min(1),
@@ -44,8 +59,8 @@ export const FlowDefinitionSchema = z
     steps: z.array(FlowStepSchema).min(1),
     completion: FlowCompletionSchema,
 })
-    .refine((f) => f.steps[f.steps.length - 1].field.type === 'confirm', {
-    message: 'The last step of a flow must be a confirm step',
+    .refine(lastStepIsValidTerminal, {
+    message: 'The last step of a flow must be a confirm step, or a choice/dynamic_choice step with at least one branch whose action is "complete"',
 });
 export const FlowSessionStateSchema = z.object({
     flow_key: z.string(),
