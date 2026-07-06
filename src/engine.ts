@@ -26,6 +26,12 @@ function skipHint(locale: Locale): string {
     : '(Reply "skip" to leave this blank.)';
 }
 
+function numberHint(locale: Locale, count: number): string {
+  return locale === 'ss'
+    ? `Phendvula ngenombolo kusukela ku-1 kuya ku-${count}.`
+    : `Reply with a number from 1 to ${count}.`;
+}
+
 function isSkip(input: string): boolean {
   return SKIP_WORDS.includes(input.trim().toLowerCase());
 }
@@ -181,10 +187,10 @@ export function renderStep(
   if (step.help) body += `\n${t(step.help, locale)}`;
   if (step.field.type === 'choice') {
     const opts = step.field.options.map((o, i) => `${i + 1}. ${t(o.label, locale)}`);
-    body += `\n${opts.join('\n')}`;
+    body += `\n${opts.join('\n')}\n${numberHint(locale, opts.length)}`;
   } else if (step.field.type === 'dynamic_choice') {
     const opts = optionsFor(step, ctx).map((o, i) => `${i + 1}. ${t(o.label, locale)}`);
-    if (opts.length > 0) body += `\n${opts.join('\n')}`;
+    if (opts.length > 0) body += `\n${opts.join('\n')}\n${numberHint(locale, opts.length)}`;
   }
   if (step.optional) body += `\n${skipHint(locale)}`;
   return interpolate(body, ctx, state.answers);
