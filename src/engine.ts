@@ -1,4 +1,5 @@
 import type {
+  AnswerValue,
   ChoiceOption,
   FlowContext,
   FlowDefinition,
@@ -7,6 +8,7 @@ import type {
   FlowTurnResult,
   Locale,
   LocalizedText,
+  SkipCond,
 } from './types.js';
 import { validateField } from './validators.js';
 
@@ -31,6 +33,43 @@ function optionsFor(step: FlowStep, ctx: FlowContext): ChoiceOption[] {
   return ctx.options?.[step.key] ?? [];
 }
 
+function condMatches(cond: SkipCond, answers: Record<string, AnswerValue>): boolean {
+  const value = answers[cond.key];
+  if (value === undefined) return false;
+  if (cond.equals !== undefined && value === cond.equals) return true;
+  if (cond.in !== undefined && cond.in.includes(value)) return true;
+  return false;
+}
+
+function stepIsSkipped(step: FlowStep, answers: Record<string, AnswerValue>): boolean {
+  return step.skip_when?.some((cond) => condMatches(cond, answers)) ?? false;
+}
+
+function firstVisibleFrom(
+  flow: FlowDefinition,
+  index: number,
+  answers: Record<string, AnswerValue>,
+): number {
+  let i = index;
+  while (i < flow.steps.length - 1 && stepIsSkipped(flow.steps[i], answers)) {
+    i += 1;
+  }
+  if (i >= flow.steps.length) return flow.steps.length - 1;
+  return i;
+}
+
+function prevVisibleFrom(
+  flow: FlowDefinition,
+  index: number,
+  answers: Record<string, AnswerValue>,
+): number {
+  let i = index;
+  while (i > 0 && stepIsSkipped(flow.steps[i], answers)) {
+    i -= 1;
+  }
+  return Math.max(i, 0);
+}
+
 export function renderStep(
   flow: FlowDefinition,
   state: FlowSessionState,
@@ -41,7 +80,7 @@ export function renderStep(
 
   if (step.field.type === 'confirm') {
     const lines = flow.steps
-      .filter((s) => s.field.type !== 'confirm')
+      .filter((s) => s.field.type !== 'confirm' && !stepIsSkipped(s, state.answers))
       .map((s) => {
         const label = s.summary_label ? t(s.summary_label, locale) : s.key;
         const ans = state.answers[s.key];
@@ -85,7 +124,7 @@ export function startFlow(
   const state: FlowSessionState = {
     flow_key: flow.key,
     flow_version: flow.version,
-    step_index: 0,
+    step_index: firstVisibleFrom(flow, 0, {}),
     answers: {},
     answer_labels: {},
     locale,
@@ -114,9 +153,11 @@ export function runFlowTurn(
 
   const step = flow.steps[state.step_index];
 
-  // "back" — step back one (ignored at step 0, where it falls through as input).
+  // "back" — step back one, skipping over skipped steps (ignored at step 0, where it falls
+  // through as input).
   if (BACK_WORDS.includes(trimmed.toLowerCase()) && state.step_index > 0) {
-    const prev: FlowSessionState = { ...state, step_index: state.step_index - 1 };
+    const prevIndex = prevVisibleFrom(flow, state.step_index - 1, state.answers);
+    const prev: FlowSessionState = { ...state, step_index: prevIndex };
     return { sessionState: prev, replies: [renderStep(flow, prev, ctx)], status: 'in_progress' };
   }
 
@@ -138,7 +179,12 @@ export function runFlowTurn(
 
   // Optional step — a skip token advances without storing an answer.
   if (step.optional && isSkip(trimmed)) {
-    const nextState: FlowSessionState = { ...state, step_index: state.step_index + 1 };
+    const merged = ctx.prefill ? { ...state.answers, ...ctx.prefill } : state.answers;
+    const nextState: FlowSessionState = {
+      ...state,
+      step_index: firstVisibleFrom(flow, state.step_index + 1, merged),
+      answers: merged,
+    };
     return { sessionState: nextState, replies: [renderStep(flow, nextState, ctx)], status: 'in_progress' };
   }
 
@@ -154,10 +200,12 @@ export function runFlowTurn(
       };
     }
     const chosen = opts.find((o) => o.value === result.value);
+    const nextAnswers = { ...state.answers, [step.key]: result.value };
+    const merged = ctx.prefill ? { ...nextAnswers, ...ctx.prefill } : nextAnswers;
     const nextState: FlowSessionState = {
       ...state,
-      step_index: state.step_index + 1,
-      answers: { ...state.answers, [step.key]: result.value },
+      step_index: firstVisibleFrom(flow, state.step_index + 1, merged),
+      answers: merged,
       answer_labels: {
         ...(state.answer_labels ?? {}),
         [step.key]: chosen ? chosen.label[locale] : String(result.value),
@@ -175,10 +223,12 @@ export function runFlowTurn(
       status: 'in_progress',
     };
   }
+  const nextAnswers = { ...state.answers, [step.key]: result.value };
+  const merged = ctx.prefill ? { ...nextAnswers, ...ctx.prefill } : nextAnswers;
   const nextState: FlowSessionState = {
     ...state,
-    step_index: state.step_index + 1,
-    answers: { ...state.answers, [step.key]: result.value },
+    step_index: firstVisibleFrom(flow, state.step_index + 1, merged),
+    answers: merged,
   };
   return { sessionState: nextState, replies: [renderStep(flow, nextState, ctx)], status: 'in_progress' };
 }

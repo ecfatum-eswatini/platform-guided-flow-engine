@@ -26,12 +26,21 @@ export const FieldSpecSchema = z.discriminatedUnion('type', [
 ]);
 export type FieldSpec = z.infer<typeof FieldSpecSchema>;
 
+export const SkipCondSchema = z.object({
+  key: z.string().min(1),
+  equals: z.union([z.string(), z.number()]).optional(),
+  in: z.array(z.union([z.string(), z.number()])).optional(),
+});
+export type SkipCond = z.infer<typeof SkipCondSchema>;
+
 export const FlowStepSchema = z.object({
   key: z.string().min(1),
   prompt: LocalizedTextSchema,
   help: LocalizedTextSchema.optional(),
   summary_label: LocalizedTextSchema.optional(),
   optional: z.boolean().optional(),
+  skip_when: z.array(SkipCondSchema).optional(),
+  prefill: z.string().min(1).optional(),
   field: FieldSpecSchema,
 });
 export type FlowStep = z.infer<typeof FlowStepSchema>;
@@ -79,4 +88,6 @@ export interface FlowTurnResult {
 export interface FlowContext {
   /** Resolved options for dynamic_choice steps, keyed by step.key. */
   options?: Record<string, ChoiceOption[]>;
+  /** Facts the portal injects this turn (e.g. a plate lookup result) to drive skip_when. */
+  prefill?: Record<string, string | number>;
 }
