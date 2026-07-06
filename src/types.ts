@@ -33,6 +33,13 @@ export const SkipCondSchema = z.object({
 });
 export type SkipCond = z.infer<typeof SkipCondSchema>;
 
+export const StepBranchSchema = z.object({
+  action: z.enum(['advance', 'complete', 'goto']),
+  goto: z.string().optional(), // step key to jump to (required when action==='goto')
+  clear_from: z.string().optional(), // step key; clear answers for all steps at index >= this step's index
+});
+export type StepBranch = z.infer<typeof StepBranchSchema>;
+
 export const FlowStepSchema = z.object({
   key: z.string().min(1),
   prompt: LocalizedTextSchema,
@@ -41,6 +48,7 @@ export const FlowStepSchema = z.object({
   optional: z.boolean().optional(),
   skip_when: z.array(SkipCondSchema).optional(),
   prefill: z.string().min(1).optional(),
+  branches: z.record(z.string(), StepBranchSchema).optional(),
   field: FieldSpecSchema,
 });
 export type FlowStep = z.infer<typeof FlowStepSchema>;
@@ -51,6 +59,15 @@ export const FlowCompletionSchema = z.object({
 });
 export type FlowCompletion = z.infer<typeof FlowCompletionSchema>;
 
+function lastStepIsValidTerminal(f: { steps: FlowStep[] }): boolean {
+  const last = f.steps[f.steps.length - 1];
+  if (last.field.type === 'confirm') return true;
+  if (last.field.type === 'choice' || last.field.type === 'dynamic_choice') {
+    return Object.values(last.branches ?? {}).some((b) => b.action === 'complete');
+  }
+  return false;
+}
+
 export const FlowDefinitionSchema = z
   .object({
     key: z.string().min(1),
@@ -59,8 +76,9 @@ export const FlowDefinitionSchema = z
     steps: z.array(FlowStepSchema).min(1),
     completion: FlowCompletionSchema,
   })
-  .refine((f) => f.steps[f.steps.length - 1].field.type === 'confirm', {
-    message: 'The last step of a flow must be a confirm step',
+  .refine(lastStepIsValidTerminal, {
+    message:
+      'The last step of a flow must be a confirm step, or a choice/dynamic_choice step with at least one branch whose action is "complete"',
   });
 export type FlowDefinition = z.infer<typeof FlowDefinitionSchema>;
 
@@ -90,4 +108,6 @@ export interface FlowContext {
   options?: Record<string, ChoiceOption[]>;
   /** Facts the portal injects this turn (e.g. a plate lookup result) to drive skip_when. */
   prefill?: Record<string, string | number>;
+  /** Values available for {token} interpolation in rendered prompts. Answers win over vars. */
+  vars?: Record<string, string | number>;
 }
