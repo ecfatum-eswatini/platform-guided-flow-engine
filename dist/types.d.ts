@@ -145,6 +145,20 @@ export declare const FieldSpecSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObje
     type: "confirm";
 }>]>;
 export type FieldSpec = z.infer<typeof FieldSpecSchema>;
+export declare const SkipCondSchema: z.ZodObject<{
+    key: z.ZodString;
+    equals: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodNumber]>>;
+    in: z.ZodOptional<z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodNumber]>, "many">>;
+}, "strip", z.ZodTypeAny, {
+    key: string;
+    equals?: string | number | undefined;
+    in?: (string | number)[] | undefined;
+}, {
+    key: string;
+    equals?: string | number | undefined;
+    in?: (string | number)[] | undefined;
+}>;
+export type SkipCond = z.infer<typeof SkipCondSchema>;
 export declare const FlowStepSchema: z.ZodObject<{
     key: z.ZodString;
     prompt: z.ZodObject<{
@@ -178,6 +192,20 @@ export declare const FlowStepSchema: z.ZodObject<{
         ss: string;
     }>>;
     optional: z.ZodOptional<z.ZodBoolean>;
+    skip_when: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        key: z.ZodString;
+        equals: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodNumber]>>;
+        in: z.ZodOptional<z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodNumber]>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        key: string;
+        equals?: string | number | undefined;
+        in?: (string | number)[] | undefined;
+    }, {
+        key: string;
+        equals?: string | number | undefined;
+        in?: (string | number)[] | undefined;
+    }>, "many">>;
+    prefill: z.ZodOptional<z.ZodString>;
     field: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         type: z.ZodLiteral<"text">;
         min: z.ZodOptional<z.ZodNumber>;
@@ -329,6 +357,12 @@ export declare const FlowStepSchema: z.ZodObject<{
         ss: string;
     } | undefined;
     optional?: boolean | undefined;
+    skip_when?: {
+        key: string;
+        equals?: string | number | undefined;
+        in?: (string | number)[] | undefined;
+    }[] | undefined;
+    prefill?: string | undefined;
 }, {
     key: string;
     prompt: {
@@ -374,6 +408,12 @@ export declare const FlowStepSchema: z.ZodObject<{
         ss: string;
     } | undefined;
     optional?: boolean | undefined;
+    skip_when?: {
+        key: string;
+        equals?: string | number | undefined;
+        in?: (string | number)[] | undefined;
+    }[] | undefined;
+    prefill?: string | undefined;
 }>;
 export type FlowStep = z.infer<typeof FlowStepSchema>;
 export declare const FlowCompletionSchema: z.ZodObject<{
@@ -433,6 +473,20 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             ss: string;
         }>>;
         optional: z.ZodOptional<z.ZodBoolean>;
+        skip_when: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            key: z.ZodString;
+            equals: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodNumber]>>;
+            in: z.ZodOptional<z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodNumber]>, "many">>;
+        }, "strip", z.ZodTypeAny, {
+            key: string;
+            equals?: string | number | undefined;
+            in?: (string | number)[] | undefined;
+        }, {
+            key: string;
+            equals?: string | number | undefined;
+            in?: (string | number)[] | undefined;
+        }>, "many">>;
+        prefill: z.ZodOptional<z.ZodString>;
         field: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
             type: z.ZodLiteral<"text">;
             min: z.ZodOptional<z.ZodNumber>;
@@ -584,6 +638,12 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             ss: string;
         } | undefined;
         optional?: boolean | undefined;
+        skip_when?: {
+            key: string;
+            equals?: string | number | undefined;
+            in?: (string | number)[] | undefined;
+        }[] | undefined;
+        prefill?: string | undefined;
     }, {
         key: string;
         prompt: {
@@ -629,6 +689,12 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             ss: string;
         } | undefined;
         optional?: boolean | undefined;
+        skip_when?: {
+            key: string;
+            equals?: string | number | undefined;
+            in?: (string | number)[] | undefined;
+        }[] | undefined;
+        prefill?: string | undefined;
     }>, "many">;
     completion: z.ZodObject<{
         mode: z.ZodEnum<["submit_in_chat", "draft_then_portal"]>;
@@ -692,6 +758,12 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             ss: string;
         } | undefined;
         optional?: boolean | undefined;
+        skip_when?: {
+            key: string;
+            equals?: string | number | undefined;
+            in?: (string | number)[] | undefined;
+        }[] | undefined;
+        prefill?: string | undefined;
     }[];
     completion: {
         mode: "submit_in_chat" | "draft_then_portal";
@@ -749,6 +821,12 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             ss: string;
         } | undefined;
         optional?: boolean | undefined;
+        skip_when?: {
+            key: string;
+            equals?: string | number | undefined;
+            in?: (string | number)[] | undefined;
+        }[] | undefined;
+        prefill?: string | undefined;
     }[];
     completion: {
         mode: "submit_in_chat" | "draft_then_portal";
@@ -806,6 +884,12 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             ss: string;
         } | undefined;
         optional?: boolean | undefined;
+        skip_when?: {
+            key: string;
+            equals?: string | number | undefined;
+            in?: (string | number)[] | undefined;
+        }[] | undefined;
+        prefill?: string | undefined;
     }[];
     completion: {
         mode: "submit_in_chat" | "draft_then_portal";
@@ -863,6 +947,12 @@ export declare const FlowDefinitionSchema: z.ZodEffects<z.ZodObject<{
             ss: string;
         } | undefined;
         optional?: boolean | undefined;
+        skip_when?: {
+            key: string;
+            equals?: string | number | undefined;
+            in?: (string | number)[] | undefined;
+        }[] | undefined;
+        prefill?: string | undefined;
     }[];
     completion: {
         mode: "submit_in_chat" | "draft_then_portal";
@@ -904,4 +994,6 @@ export interface FlowTurnResult {
 export interface FlowContext {
     /** Resolved options for dynamic_choice steps, keyed by step.key. */
     options?: Record<string, ChoiceOption[]>;
+    /** Facts the portal injects this turn (e.g. a plate lookup result) to drive skip_when. */
+    prefill?: Record<string, string | number>;
 }

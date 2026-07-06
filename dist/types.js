@@ -17,12 +17,19 @@ export const FieldSpecSchema = z.discriminatedUnion('type', [
     z.object({ type: z.literal('email') }),
     z.object({ type: z.literal('confirm') }),
 ]);
+export const SkipCondSchema = z.object({
+    key: z.string().min(1),
+    equals: z.union([z.string(), z.number()]).optional(),
+    in: z.array(z.union([z.string(), z.number()])).optional(),
+});
 export const FlowStepSchema = z.object({
     key: z.string().min(1),
     prompt: LocalizedTextSchema,
     help: LocalizedTextSchema.optional(),
     summary_label: LocalizedTextSchema.optional(),
     optional: z.boolean().optional(),
+    skip_when: z.array(SkipCondSchema).optional(),
+    prefill: z.string().min(1).optional(),
     field: FieldSpecSchema,
 });
 export const FlowCompletionSchema = z.object({
