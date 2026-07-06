@@ -179,7 +179,7 @@ export function runFlowTurn(
 
   // Optional step — a skip token advances without storing an answer.
   if (step.optional && isSkip(trimmed)) {
-    const merged = ctx.prefill ? { ...state.answers, ...ctx.prefill } : state.answers;
+    const merged = step.prefill && ctx.prefill ? { ...state.answers, ...ctx.prefill } : state.answers;
     const nextState: FlowSessionState = {
       ...state,
       step_index: firstVisibleFrom(flow, state.step_index + 1, merged),
@@ -201,7 +201,7 @@ export function runFlowTurn(
     }
     const chosen = opts.find((o) => o.value === result.value);
     const nextAnswers = { ...state.answers, [step.key]: result.value };
-    const merged = ctx.prefill ? { ...nextAnswers, ...ctx.prefill } : nextAnswers;
+    const merged = step.prefill && ctx.prefill ? { ...nextAnswers, ...ctx.prefill } : nextAnswers;
     const nextState: FlowSessionState = {
       ...state,
       step_index: firstVisibleFrom(flow, state.step_index + 1, merged),
@@ -224,7 +224,7 @@ export function runFlowTurn(
     };
   }
   const nextAnswers = { ...state.answers, [step.key]: result.value };
-  const merged = ctx.prefill ? { ...nextAnswers, ...ctx.prefill } : nextAnswers;
+  const merged = step.prefill && ctx.prefill ? { ...nextAnswers, ...ctx.prefill } : nextAnswers;
   const nextState: FlowSessionState = {
     ...state,
     step_index: firstVisibleFrom(flow, state.step_index + 1, merged),

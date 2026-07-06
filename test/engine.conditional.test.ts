@@ -148,6 +148,24 @@ describe('conditional steps (skip_when + prefill)', () => {
     expect(back.sessionState.step_index).toBe(0);
   });
 
+  it('ctx.prefill is a no-op when the current step has no prefill marker', () => {
+    // `owner` (index 1) carries no `prefill` marker, unlike `plate`. Passing
+    // ctx.prefill on that turn must not merge the fact into answers, and must
+    // not disturb the real answer just given.
+    const turn0 = startFlow(flow, 'en');
+    const turn1 = runFlowTurn(flow, turn0.sessionState, 'ABC123'); // plate, no prefill
+    expect(turn1.sessionState.step_index).toBe(1); // owner
+
+    const ctx: FlowContext = { prefill: { vehicle_known: 'yes' } };
+    const turn2 = runFlowTurn(flow, turn1.sessionState, 'Jane Doe', ctx); // owner, stray prefill
+
+    // vehicle_known must NOT have been merged in, so no skip is triggered:
+    // the very next step is `engine` (index 2), not `category` (index 3).
+    expect(turn2.sessionState.step_index).toBe(2);
+    expect(turn2.sessionState.answers).toEqual({ plate: 'ABC123', owner: 'Jane Doe' });
+    expect(turn2.sessionState.answers.vehicle_known).toBeUndefined();
+  });
+
   it('confirm summary omits skipped steps', () => {
     const turn0 = startFlow(flow, 'en');
     const ctx: FlowContext = { prefill: { vehicle_known: 'yes' } };
