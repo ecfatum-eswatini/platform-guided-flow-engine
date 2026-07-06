@@ -57,6 +57,18 @@ describe('renderStep', () => {
     expect(renderStep(demoFlow, state)).toContain('Ngubani ligama lakho?');
   });
 
+  it('appends a reply-with-a-number affordance to a choice step (en)', () => {
+    const state = startFlow(demoFlow, 'en').sessionState;
+    const rendered = renderStep(demoFlow, { ...state, step_index: 1 });
+    expect(rendered).toContain('Reply with a number from 1 to 2.');
+  });
+
+  it('appends a reply-with-a-number affordance to a choice step (ss)', () => {
+    const state = startFlow(demoFlow, 'ss').sessionState;
+    const rendered = renderStep(demoFlow, { ...state, step_index: 1 });
+    expect(rendered).toContain('Phendvula ngenombolo kusukela ku-1 kuya ku-2.');
+  });
+
   it('renders the confirm step as a summary of prior answers', () => {
     const rendered = renderStep(demoFlow, {
       flow_key: 'demo',

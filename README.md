@@ -64,7 +64,10 @@ Processes one user message:
 ### `renderStep(flow, state): string`
 
 Renders the current step's user-facing text. Useful when a host resumes a
-saved session and needs to re-emit the current question.
+saved session and needs to re-emit the current question. `choice` and
+`dynamic_choice` steps render their numbered option list followed by a
+bilingual "Reply with a number from 1 to N." affordance (omitted when a
+`dynamic_choice` has no injected options).
 
 ### `validateField(spec, raw): ValidationResult`
 

@@ -34,6 +34,16 @@ describe('dynamic_choice', () => {
     expect(turn.replies[0]).toContain('2. Mbabane Centre');
   });
 
+  it('appends a reply-with-a-number affordance to a dynamic_choice step', () => {
+    const turn = startFlow(flow, 'en', ctx);
+    expect(turn.replies[0]).toContain('Reply with a number from 1 to 2.');
+  });
+
+  it('omits the number affordance when no options are injected', () => {
+    const turn = startFlow(flow, 'en', { options: { centre: [] } });
+    expect(turn.replies[0]).not.toContain('Reply with a number');
+  });
+
   it('stores the chosen value and its display label', () => {
     const turn = startFlow(flow, 'en', ctx);
     const next = runFlowTurn(flow, turn.sessionState, '2', ctx);
