@@ -49,8 +49,8 @@ describe('backward-compat: plain flow unaffected by v0.4.0', () => {
     turn = runFlowTurn(plainFlow, turn.sessionState, 'Sipho');
     expect(turn.sessionState.step_index).toBe(1);
     expect(turn.replies[0]).toContain('Your role?');
-    expect(turn.replies[0]).toContain('1. Owner');
-    expect(turn.replies[0]).toContain('2. Agent');
+    expect(turn.replies[0]).toContain('1️⃣ Owner');
+    expect(turn.replies[0]).toContain('2️⃣ Agent');
 
     turn = runFlowTurn(plainFlow, turn.sessionState, '1');
     expect(turn.sessionState.step_index).toBe(2);

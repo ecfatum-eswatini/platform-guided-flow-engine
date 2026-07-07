@@ -32,6 +32,25 @@ function numberHint(locale: Locale, count: number): string {
     : `Reply with a number from 1 to ${count}.`;
 }
 
+// Keycap-emoji numbering for the first ten options (1️⃣…🔟); plain "N." beyond
+// (there is no keycap emoji past 10, e.g. for long dynamic-choice slot lists).
+const OPTION_KEYCAPS = [
+  '1️⃣',
+  '2️⃣',
+  '3️⃣',
+  '4️⃣',
+  '5️⃣',
+  '6️⃣',
+  '7️⃣',
+  '8️⃣',
+  '9️⃣',
+  '🔟',
+];
+
+function optionNumber(index: number): string {
+  return index < OPTION_KEYCAPS.length ? OPTION_KEYCAPS[index]! : `${index + 1}.`;
+}
+
 function isSkip(input: string): boolean {
   return SKIP_WORDS.includes(input.trim().toLowerCase());
 }
@@ -186,10 +205,14 @@ export function renderStep(
   let body = t(step.prompt, locale);
   if (step.help) body += `\n${t(step.help, locale)}`;
   if (step.field.type === 'choice') {
-    const opts = step.field.options.map((o, i) => `${i + 1}. ${t(o.label, locale)}`);
+    const opts = step.field.options.map(
+      (o, i) => `${optionNumber(i)} ${t(o.label, locale)}`,
+    );
     body += `\n${opts.join('\n')}\n${numberHint(locale, opts.length)}`;
   } else if (step.field.type === 'dynamic_choice') {
-    const opts = optionsFor(step, ctx).map((o, i) => `${i + 1}. ${t(o.label, locale)}`);
+    const opts = optionsFor(step, ctx).map(
+      (o, i) => `${optionNumber(i)} ${t(o.label, locale)}`,
+    );
     if (opts.length > 0) body += `\n${opts.join('\n')}\n${numberHint(locale, opts.length)}`;
   }
   if (step.optional) body += `\n${skipHint(locale)}`;

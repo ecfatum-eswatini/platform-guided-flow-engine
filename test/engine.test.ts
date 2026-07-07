@@ -48,8 +48,8 @@ describe('renderStep', () => {
   it('renders a choice step with numbered options', () => {
     const state = startFlow(demoFlow, 'en').sessionState;
     const rendered = renderStep(demoFlow, { ...state, step_index: 1 });
-    expect(rendered).toContain('1. Owner');
-    expect(rendered).toContain('2. Agent');
+    expect(rendered).toContain('1️⃣ Owner');
+    expect(rendered).toContain('2️⃣ Agent');
   });
 
   it('renders siSwati prompts when locale is ss', () => {

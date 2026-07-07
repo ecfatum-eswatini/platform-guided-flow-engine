@@ -30,8 +30,8 @@ const ctx: FlowContext = {
 describe('dynamic_choice', () => {
   it('renders the injected options as a numbered list', () => {
     const turn = startFlow(flow, 'en', ctx);
-    expect(turn.replies[0]).toContain('1. Manzini Centre');
-    expect(turn.replies[0]).toContain('2. Mbabane Centre');
+    expect(turn.replies[0]).toContain('1️⃣ Manzini Centre');
+    expect(turn.replies[0]).toContain('2️⃣ Mbabane Centre');
   });
 
   it('appends a reply-with-a-number affordance to a dynamic_choice step', () => {
